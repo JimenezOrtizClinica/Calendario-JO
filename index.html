@@ -1,0 +1,153 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset='utf-8' />
+  <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css' rel='stylesheet' />
+  <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px 10px;
+      padding: 0;
+      max-width: 1200px;
+      margin: auto;
+    }
+    #calendar {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    .fc-timegrid-slot-label-frame {
+      height: 40px !important;
+    }
+    .control-panel {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .control-panel button {
+      margin: 5px;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 5px;
+      background-color: #007BFF;
+      color: white;
+      cursor: pointer;
+    }
+    .control-panel button:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <h2>Calendario Clínica Jiménez Ortiz</h2>
+  <div class="control-panel">
+    <button onclick="setMode('available')">Disponible</button>
+    <button onclick="setMode('busy')">Ocupado</button>
+    <button onclick="setMode('surgery')">Cirugía</button>
+    <button onclick="setMode('closed')">Cerrado</button>
+  </div>
+  <div id='calendar'></div>
+
+  <script>
+    let mode = 'available';
+
+    function setMode(newMode) {
+      mode = newMode;
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      const calendarEl = document.getElementById('calendar');
+      const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'timeGridWeek',
+        slotMinTime: "09:00:00",
+        slotMaxTime: "20:00:00",
+        height: "auto",
+        nowIndicator: true,
+        selectable: true,
+        editable: true,
+        validRange: {
+          start: '2025-07-01',
+          end: '2026-12-31'
+        },
+        headerToolbar: {
+          left: 'prev,next today',
+          center: 'title',
+          right: 'timeGridWeek,dayGridMonth'
+        },
+        select: function(info) {
+          let color, title;
+
+          switch (mode) {
+            case 'available':
+              color = '#6AC259';
+              title = 'Disponible';
+              break;
+            case 'busy':
+              color = '#FF9F40';
+              title = 'Ocupado';
+              break;
+            case 'surgery':
+              color = '#1E40AF';
+              title = 'Cirugía';
+              break;
+            case 'closed':
+              color = '#555';
+              title = 'Cerrado';
+              break;
+          }
+
+          calendar.addEvent({
+            title: title,
+            start: info.start,
+            end: info.end,
+            backgroundColor: color,
+            borderColor: color,
+            allDay: false
+          });
+        },
+        events: function(fetchInfo, successCallback) {
+          const events = [];
+          const start = new Date(fetchInfo.start);
+          const end = new Date(fetchInfo.end);
+
+          for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            const day = d.getDay(); // 0 (Sun) to 6 (Sat)
+            const dateStr = d.toISOString().split("T")[0];
+
+            if (day === 2 || day === 3 || day === 5) { // Tue, Wed, Fri for Dr. Jiménez
+              events.push({
+                title: 'Dr. Jiménez',
+                start: `${dateStr}T11:00:00`,
+                end: `${dateStr}T13:30:00`,
+                backgroundColor: '#3B82F6',
+                borderColor: '#3B82F6'
+              });
+              events.push({
+                title: 'Dr. Jiménez',
+                start: `${dateStr}T15:30:00`,
+                end: `${dateStr}T19:30:00`,
+                backgroundColor: '#3B82F6',
+                borderColor: '#3B82F6'
+              });
+
+              // Add Friday surgery
+              if (day === 5) {
+                events.push({
+                  title: 'Cirugía (mañana)',
+                  start: `${dateStr}T09:00:00`,
+                  end: `${dateStr}T13:00:00`,
+                  backgroundColor: '#1E3A8A',
+                  borderColor: '#1E3A8A'
+                });
+              }
+            }
+          }
+          successCallback(events);
+        }
+      });
+
+      calendar.render();
+    });
+  </script>
+</body>
+</html>
