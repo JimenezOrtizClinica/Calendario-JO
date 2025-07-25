@@ -1,0 +1,106 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Calendario Clínica JO</title>
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    #calendar {
+      max-width: 1000px;
+      margin: 40px auto;
+      padding: 0 10px;
+    }
+    .fc-event {
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="calendar"></div>
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const calendarEl = document.getElementById('calendar');
+      const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'timeGridWeek',
+        slotMinTime: "09:00:00",
+        slotMaxTime: "21:30:00",
+        allDaySlot: false,
+        editable: true,
+        selectable: true,
+        headerToolbar: {
+          left: 'prev,next today',
+          center: 'title',
+          right: 'timeGridWeek,timeGridDay'
+        },
+        events: [
+          {
+            daysOfWeek: [1, 4],
+            startTime: '12:00',
+            endTime: '13:30',
+            title: 'Lara Bañúls',
+            color: '#a16eff'
+          },
+          {
+            daysOfWeek: [1, 4],
+            startTime: '15:00',
+            endTime: '21:30',
+            title: 'Lara Bañúls',
+            color: '#a16eff'
+          },
+          {
+            daysOfWeek: [2, 3],
+            startTime: '12:00',
+            endTime: '13:30',
+            title: 'Dr. Antonio',
+            color: '#3a7bd5'
+          },
+          {
+            daysOfWeek: [2, 3],
+            startTime: '15:00',
+            endTime: '21:30',
+            title: 'Dr. Antonio',
+            color: '#3a7bd5'
+          },
+          {
+            daysOfWeek: [5],
+            startTime: '12:00',
+            endTime: '13:30',
+            title: 'Cirugía (Antonio)',
+            color: '#214177'
+          },
+          {
+            daysOfWeek: [5],
+            startTime: '15:00',
+            endTime: '21:30',
+            title: 'Cirugía (Antonio)',
+            color: '#214177'
+          }
+        ],
+        dateClick: function(info) {
+          const title = prompt('Escribe el título del evento');
+          if (title) {
+            calendar.addEvent({
+              title: title,
+              start: info.date,
+              allDay: false
+            });
+          }
+        },
+        eventClick: function(info) {
+          if (confirm(`¿Eliminar "${info.event.title}"?`)) {
+            info.event.remove();
+          }
+        }
+      });
+      calendar.render();
+    });
+  </script>
+</body>
+</html>
