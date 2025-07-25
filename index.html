@@ -1,153 +1,256 @@
-
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset='utf-8' />
-  <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css' rel='stylesheet' />
-  <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 40px 10px;
-      padding: 0;
-      max-width: 1200px;
-      margin: auto;
-    }
-    #calendar {
-      max-width: 1000px;
-      margin: 0 auto;
-    }
-    .fc-timegrid-slot-label-frame {
-      height: 40px !important;
-    }
-    .control-panel {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    .control-panel button {
-      margin: 5px;
-      padding: 10px 15px;
-      border: none;
-      border-radius: 5px;
-      background-color: #007BFF;
-      color: white;
-      cursor: pointer;
-    }
-    .control-panel button:hover {
-      background-color: #0056b3;
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Clinic Calendar - Sienna’s Version</title>
+
+<!-- FullCalendar core + daygrid + timegrid CSS -->
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet" />
+
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 10px;
+  }
+  #calendar {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  .btn-group {
+    margin-bottom: 10px;
+    text-align: center;
+  }
+  button {
+    margin: 0 5px;
+    padding: 8px 14px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+</style>
 </head>
 <body>
-  <h2>Calendario Clínica Jiménez Ortiz</h2>
-  <div class="control-panel">
-    <button onclick="setMode('available')">Disponible</button>
-    <button onclick="setMode('busy')">Ocupado</button>
-    <button onclick="setMode('surgery')">Cirugía</button>
-    <button onclick="setMode('closed')">Cerrado</button>
-  </div>
-  <div id='calendar'></div>
 
-  <script>
-    let mode = 'available';
+<h2 style="text-align:center">Clinic Schedule Calendar</h2>
 
-    function setMode(newMode) {
-      mode = newMode;
+<div class="btn-group">
+  <button id="toggleWedSurgery">Toggle Wed Morning Surgery</button>
+  <button id="toggleCloseMorning">Toggle Close Mornings (8am-1:30pm)</button>
+  <button id="toggleCloseDay">Toggle Close Selected Day</button>
+  <span style="margin-left:20px;">*Click on calendar day to select day for closing</span>
+</div>
+
+<div id="calendar"></div>
+
+<!-- FullCalendar bundle -->
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const calendarEl = document.getElementById('calendar');
+
+    // Store selected date for closing
+    let selectedDateStr = null;
+
+    // State trackers
+    let wedSurgeryOn = false;
+    let closedMornings = new Set(); // dates closed mornings
+    let closedFullDays = new Set(); // dates fully closed
+
+    // Utility to format Date to yyyy-mm-dd string
+    function formatDate(date) {
+      return date.toISOString().split('T')[0];
     }
 
-    document.addEventListener('DOMContentLoaded', function() {
-      const calendarEl = document.getElementById('calendar');
-      const calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'timeGridWeek',
-        slotMinTime: "09:00:00",
-        slotMaxTime: "20:00:00",
-        height: "auto",
-        nowIndicator: true,
-        selectable: true,
-        editable: true,
-        validRange: {
-          start: '2025-07-01',
-          end: '2026-12-31'
+    // Base schedule background events
+    function getBaseScheduleEvents() {
+      const events = [
+        // Dra. Bañúls Mon & Thu
+        {
+          daysOfWeek: [1, 4], // Monday=1, Thursday=4
+          startTime: '12:30',
+          endTime: '14:00',
+          display: 'background',
+          color: '#C8A2C8' // light purple
         },
-        headerToolbar: {
-          left: 'prev,next today',
-          center: 'title',
-          right: 'timeGridWeek,dayGridMonth'
+        {
+          daysOfWeek: [1, 4],
+          startTime: '15:00',
+          endTime: '19:30',
+          display: 'background',
+          color: '#C8A2C8'
         },
-        select: function(info) {
-          let color, title;
-
-          switch (mode) {
-            case 'available':
-              color = '#6AC259';
-              title = 'Disponible';
-              break;
-            case 'busy':
-              color = '#FF9F40';
-              title = 'Ocupado';
-              break;
-            case 'surgery':
-              color = '#1E40AF';
-              title = 'Cirugía';
-              break;
-            case 'closed':
-              color = '#555';
-              title = 'Cerrado';
-              break;
-          }
-
-          calendar.addEvent({
-            title: title,
-            start: info.start,
-            end: info.end,
-            backgroundColor: color,
-            borderColor: color,
-            allDay: false
-          });
+        // Dr. Jiménez Tue & Wed (if no surgery on Wed mornings)
+        {
+          daysOfWeek: [2], // Tuesday=2
+          startTime: '11:00',
+          endTime: '13:30',
+          display: 'background',
+          color: '#ADD8E6' // light blue
         },
-        events: function(fetchInfo, successCallback) {
-          const events = [];
-          const start = new Date(fetchInfo.start);
-          const end = new Date(fetchInfo.end);
-
-          for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-            const day = d.getDay(); // 0 (Sun) to 6 (Sat)
-            const dateStr = d.toISOString().split("T")[0];
-
-            if (day === 2 || day === 3 || day === 5) { // Tue, Wed, Fri for Dr. Jiménez
-              events.push({
-                title: 'Dr. Jiménez',
-                start: `${dateStr}T11:00:00`,
-                end: `${dateStr}T13:30:00`,
-                backgroundColor: '#3B82F6',
-                borderColor: '#3B82F6'
-              });
-              events.push({
-                title: 'Dr. Jiménez',
-                start: `${dateStr}T15:30:00`,
-                end: `${dateStr}T19:30:00`,
-                backgroundColor: '#3B82F6',
-                borderColor: '#3B82F6'
-              });
-
-              // Add Friday surgery
-              if (day === 5) {
-                events.push({
-                  title: 'Cirugía (mañana)',
-                  start: `${dateStr}T09:00:00`,
-                  end: `${dateStr}T13:00:00`,
-                  backgroundColor: '#1E3A8A',
-                  borderColor: '#1E3A8A'
-                });
-              }
-            }
-          }
-          successCallback(events);
+        {
+          daysOfWeek: [2],
+          startTime: '15:30',
+          endTime: '19:30',
+          display: 'background',
+          color: '#ADD8E6'
+        },
+        {
+          daysOfWeek: [3], // Wednesday afternoon only if no surgery
+          startTime: '15:30',
+          endTime: '19:30',
+          display: 'background',
+          color: '#ADD8E6'
+        },
+        // Dr. Jiménez Surgery Fri
+        {
+          daysOfWeek: [5], // Friday=5
+          startTime: '09:00',
+          endTime: '13:30',
+          display: 'background',
+          color: '#00008B' // darker blue
         }
+      ];
+
+      if (wedSurgeryOn) {
+        // Replace Wed morning with surgery (9:00-13:30 darker blue)
+        events.push({
+          daysOfWeek: [3], // Wednesday
+          startTime: '09:00',
+          endTime: '13:30',
+          display: 'background',
+          color: '#00008B'
+        });
+      } else {
+        // Wed morning regular Dr Jiménez (11:00-13:30 light blue)
+        events.push({
+          daysOfWeek: [3],
+          startTime: '11:00',
+          endTime: '13:30',
+          display: 'background',
+          color: '#ADD8E6'
+        });
+      }
+
+      return events;
+    }
+
+    // Closed blocks background events (full day or mornings)
+    function getClosedBackgroundEvents() {
+      const events = [];
+
+      closedFullDays.forEach(dateStr => {
+        events.push({
+          start: dateStr,
+          allDay: true,
+          display: 'background',
+          color: 'rgba(0,0,0,0.3)'
+        });
       });
 
-      calendar.render();
+      closedMornings.forEach(dateStr => {
+        events.push({
+          start: dateStr + 'T08:00:00',
+          end: dateStr + 'T13:30:00',
+          display: 'background',
+          color: 'rgba(255,0,0,0.25)'
+        });
+      });
+
+      return events;
+    }
+
+    // Combine all background events
+    function getAllBackgroundEvents() {
+      return [...getBaseScheduleEvents(), ...getClosedBackgroundEvents()];
+    }
+
+    // Initialize calendar
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+      initialView: 'timeGridWeek',
+      slotMinTime: '08:00:00',
+      slotMaxTime: '21:00:00',
+      allDaySlot: false,
+      height: 'auto',
+      selectable: true,
+      selectMirror: true,
+      events: getAllBackgroundEvents(),
+      select: function (info) {
+        selectedDateStr = formatDate(info.start);
+        alert('Selected day: ' + selectedDateStr + '. Now use the buttons to toggle closures.')
+      },
+      datesSet: function () {
+        // Refresh events on navigation
+        calendar.refetchEvents();
+      },
+      eventSources: [
+        {
+          events: function (fetchInfo, successCallback, failureCallback) {
+            successCallback(getAllBackgroundEvents());
+          }
+        }
+      ]
     });
-  </script>
+
+    calendar.render();
+
+    // Button handlers
+
+    document.getElementById('toggleWedSurgery').addEventListener('click', () => {
+      wedSurgeryOn = !wedSurgeryOn;
+      calendar.removeAllEvents();
+      calendar.addEventSource({
+        events: function (fetchInfo, successCallback) {
+          successCallback(getAllBackgroundEvents());
+        }
+      });
+      calendar.refetchEvents();
+      alert('Wednesday morning surgery ' + (wedSurgeryOn ? 'enabled' : 'disabled'));
+    });
+
+    document.getElementById('toggleCloseMorning').addEventListener('click', () => {
+      if (!selectedDateStr) {
+        alert('Please select a day on the calendar first!');
+        return;
+      }
+      if (closedMornings.has(selectedDateStr)) {
+        closedMornings.delete(selectedDateStr);
+      } else {
+        closedMornings.add(selectedDateStr);
+        closedFullDays.delete(selectedDateStr); // prevent full day close conflicts
+      }
+      calendar.removeAllEvents();
+      calendar.addEventSource({
+        events: function (fetchInfo, successCallback) {
+          successCallback(getAllBackgroundEvents());
+        }
+      });
+      calendar.refetchEvents();
+      alert(`Morning closure for ${selectedDateStr} is now ${closedMornings.has(selectedDateStr) ? 'ON' : 'OFF'}`);
+    });
+
+    document.getElementById('toggleCloseDay').addEventListener('click', () => {
+      if (!selectedDateStr) {
+        alert('Please select a day on the calendar first!');
+        return;
+      }
+      if (closedFullDays.has(selectedDateStr)) {
+        closedFullDays.delete(selectedDateStr);
+      } else {
+        closedFullDays.add(selectedDateStr);
+        closedMornings.delete(selectedDateStr); // prevent morning close conflicts
+      }
+      calendar.removeAllEvents();
+      calendar.addEventSource({
+        events: function (fetchInfo, successCallback) {
+          successCallback(getAllBackgroundEvents());
+        }
+      });
+      calendar.refetchEvents();
+      alert(`Full day closure for ${selectedDateStr} is now ${closedFullDays.has(selectedDateStr) ? 'ON' : 'OFF'}`);
+    });
+  });
+</script>
+
 </body>
 </html>
